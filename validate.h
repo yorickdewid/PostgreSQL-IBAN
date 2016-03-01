@@ -4,12 +4,13 @@
 #include "specification.h"
 
 class Validate {
-public:
+  public:
 	Validate();
+	~Validate();
 	bool isValid(std::string arg);
-	void addSpecification(std::unique_ptr<Specification> specPtr);
+	void addSpecification(Specification* specPtr);
 	void setSelectedSpecification(std::string countryCode);
 
-	std::map<std::string, std::unique_ptr<Specification>> specifications;
-	std::unique_ptr<Specification> selectedSpec;
+	std::map<std::string, Specification*> specifications;
+	Specification* selectedSpec;
 };

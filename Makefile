@@ -10,5 +10,9 @@ all: iban.so
 
 iban.so: iban.cc
 			$(CC) $(CFLAGS) -o iban.o -c iban.cc $(INCLUDEDIRS)
-			$(CC) -shared -o iban.so iban.o $(LIBDIR) -lpq -lm
+			$(CC) -Wl,--gc-sections -shared -o iban.so iban.o $(LIBDIR) -lpq -lm -lstdc++
 			# cp iban.so $(LIBINSTALL)
+
+clean:
+	@$(RM) -rf *.o
+	@$(RM) -rf iban.so
