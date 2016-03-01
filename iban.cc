@@ -104,30 +104,29 @@ std::regex parseStructure(std::string structure) {
 	return std::regex(regex.c_str());
 }
 
-void Validate::setSelectedSpecification(std::string countryCode) {
-	this->selectedSpec = this->specifications[countryCode];
-}
-
 bool Validate::isValid(std::string arg) {
-	Specification* spec = new Specification("", 0, "", arg);
-	if (!this->selectedSpec) {
-		std::transform(spec->example.begin(), spec->example.end(), spec->example.begin(), toupper);
-		spec->countryCode = spec->example.substr(0, 2);
-		spec->length = spec->example.length();
-		setSelectedSpecification(spec->countryCode);
-	}
-	if (!(this->selectedSpec == nullptr)) {
-		std::string shortened = spec->example.substr(4, spec->example.length());
-		bool result = this->selectedSpec->length == spec->length
-		              && this->selectedSpec->countryCode.compare(spec->countryCode) == 0
-		              && std::regex_match(shortened, parseStructure(this->selectedSpec->structure))
-		              && iso7064Mod97_10(spec->example);
-		delete spec;
-		return result;
-	} else {
-		delete spec;
+	Specification* spec = new Specification(arg);
+
+	/* Convert uppercase */
+	std::transform(spec->example.begin(), spec->example.end(),
+	               spec->example.begin(), toupper);
+
+	/* Match on country */
+	spec->countryCode = spec->example.substr(0, 2);
+	spec->length = spec->example.length();
+	Specification* specFound = this->specifications[spec->countryCode];
+	if (!specFound)
 		return false;
-	}
+
+	/* Test accountnumber */
+	std::string shortened = spec->example.substr(4, spec->example.length());
+	bool result = specFound->length == spec->length
+	              && specFound->countryCode.compare(spec->countryCode) == 0
+	              && std::regex_match(shortened, parseStructure(specFound->structure))
+	              && iso7064Mod97_10(spec->example);
+
+	delete spec;
+	return result;
 }
 
 Validate::~Validate() {
@@ -399,13 +398,7 @@ bool account_validate(text *iban) {
 	Validate val;
 	ciban = text_to_cstring(iban);
 
-	elog(DEBUG1, "Evaluating '%s'", ciban);
-
-	bool r = val.isValid(std::string(ciban));
-
-	elog(DEBUG1, "Result %d", r);
-
-	return r;
+	return val.isValid(std::string(ciban));
 }
 }
 
