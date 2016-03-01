@@ -391,14 +391,29 @@ Validate::Validate() {
 
 }
 
+/**
+* Separate CXX and C logic to minimize unexpected or malformed symbols due to
+* language conversions. Also catch all exceptions the std++ can throw since
+* PostgreSQL is not able to handle them.
+*
+* @param {string} iban
+* @returns {bool}
+*/
 namespace {
 bool account_validate(text *iban) {
 	char *ciban;
+	bool result;
 
 	Validate val;
 	ciban = text_to_cstring(iban);
 
-	return val.isValid(std::string(ciban));
+	try {
+		result = val.isValid(std::string(ciban));
+	} catch (std::exception& e) {
+		elog(ERROR, "%s", e.what());
+	}
+
+	return false;
 }
 }
 
