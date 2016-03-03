@@ -388,6 +388,15 @@ Validate::Validate() {
 	addSpecification(new Specification(
 	                     "UA", 29, "F25",
 	                     "UA511234567890123456789012345"));
+	addSpecification(new Specification(
+	                     "EG", 27, "F23",
+	                     "EG1100006001880800100014553"))); 
+	addSpecification(new Specification(
+	                     "CG", 27, "F23",
+	                     "CG5230011000202151234567890"))); 
+	addSpecification(new Specification(
+	                     "GA", 27, "F23",
+	                     "GA2140002000055602673300064"))); 
 
 }
 
