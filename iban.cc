@@ -1,9 +1,29 @@
+/*
+ * IBAN: PostgreSQL functions and datatype
+ * Copyright © 2016 Yorick de Wid <yorick17@outlook.com>
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ *********************************************************************/
+
 extern "C"
 {
 #include <postgres.h>
 #include <string.h>
 #include <fmgr.h>
 #include <utils/builtins.h>
+#include <libpq/pqformat.h>
 }
 
 #include <iostream>
@@ -23,11 +43,11 @@ extern "C"
 
 	extern Datum ibanin(PG_FUNCTION_ARGS);
 	extern Datum ibanout(PG_FUNCTION_ARGS);
+	extern Datum ibanrecv(PG_FUNCTION_ARGS);
+	extern Datum ibansend(PG_FUNCTION_ARGS);
 	extern Datum iban_validate(PG_FUNCTION_ARGS);
 
-	typedef struct Iban {
-		char		account[34];
-	}	Iban;
+	typedef char Iban;
 }
 
 void Validate::addSpecification(Specification* specPtr) {
@@ -449,25 +469,23 @@ bool account_validate_str(char *iban) {
 
 extern "C"
 {
-	/* Convert type input */
+	/**************************************************************************
+	 * Input/Output functions
+	 **************************************************************************/
 
 	PG_FUNCTION_INFO_V1(ibanin);
 
 	Datum
 	ibanin(PG_FUNCTION_ARGS) {
-		char	   *str = PG_GETARG_CSTRING(0);
-		Iban       *result;
+		char	   *inputText = PG_GETARG_CSTRING(0);
 
-		if (!account_validate_str(str))
+		if (!account_validate_str(inputText))
 			ereport(ERROR,
 			        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 			         errmsg("invalid iban format for value: \"%s\"",
-			                str)));
+			                inputText)));
 
-		result = (Iban *) palloc0(sizeof(Iban));
-		memcpy(result->account, str, strlen(str));
-
-		PG_RETURN_POINTER(result);
+		PG_RETURN_TEXT_P(cstring_to_text(inputText));
 	}
 
 	/* Convert type output */
@@ -476,11 +494,41 @@ extern "C"
 
 	Datum
 	ibanout(PG_FUNCTION_ARGS) {
-		Iban       *iban = (Iban *) PG_GETARG_POINTER(0);
-		char	   *result;
+		Iban       *iban = (Iban *) PG_GETARG_DATUM(0);
 
-		result = psprintf("%s", iban->account);
-		PG_RETURN_CSTRING(result);
+		PG_RETURN_CSTRING(TextDatumGetCString(iban));
+	}
+
+	/**************************************************************************
+	 * Binary Input/Output functions
+	 **************************************************************************/
+
+	PG_FUNCTION_INFO_V1(ibanrecv);
+
+	Datum
+	ibanrecv(PG_FUNCTION_ARGS) {
+		StringInfo     buf = (StringInfo) PG_GETARG_POINTER(0);
+		text           *result;
+		Iban           *str;
+		int            nbytes;
+
+		str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
+
+		result = cstring_to_text_with_len(str, nbytes);
+		pfree(str);
+		PG_RETURN_TEXT_P(result);
+	}
+
+	PG_FUNCTION_INFO_V1(ibansend);
+
+	Datum
+	ibansend(PG_FUNCTION_ARGS) {
+		text       *t = PG_GETARG_TEXT_PP(0);
+		StringInfoData buf;
+
+		pq_begintypsend(&buf);
+		pq_sendtext(&buf, VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
+		PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
 	}
 
 	/* Manually verify a text */
