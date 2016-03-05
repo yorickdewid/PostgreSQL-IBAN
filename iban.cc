@@ -390,13 +390,13 @@ Validate::Validate() {
 	                     "UA511234567890123456789012345"));
 	addSpecification(new Specification(
 	                     "EG", 27, "F23",
-	                     "EG1100006001880800100014553"))); 
+	                     "EG1100006001880800100014553"));
 	addSpecification(new Specification(
 	                     "CG", 27, "F23",
-	                     "CG5230011000202151234567890"))); 
+	                     "CG5230011000202151234567890"));
 	addSpecification(new Specification(
 	                     "GA", 27, "F23",
-	                     "GA2140002000055602673300064"))); 
+	                     "GA2140002000055602673300064"));
 
 }
 
@@ -409,33 +409,85 @@ Validate::Validate() {
 * @returns {bool}
 */
 namespace {
-bool account_validate(text *iban) {
+bool account_validate_text(text *iban) {
 	char *ciban;
 	bool result;
-
 	Validate val;
+
 	ciban = text_to_cstring(iban);
 
 	try {
 		result = val.isValid(std::string(ciban));
 	} catch (std::exception& e) {
 		elog(ERROR, "%s", e.what());
+		return false;
 	}
 
-	return false;
+	return result;
+}
+
+bool account_validate_str(char *iban) {
+	bool result;
+	Validate val;
+
+	try {
+		result = val.isValid(std::string(iban));
+	} catch (std::exception& e) {
+		elog(ERROR, "%s", e.what());
+		return false;
+	}
+
+	return result;
 }
 }
 
 extern "C"
 {
+	/* Convert type input */
+
+	PG_FUNCTION_INFO_V1(ibanin);
+
+	Datum
+	ibanin(PG_FUNCTION_ARGS) {
+		char       *str = PG_GETARG_CSTRING(0);
+		char       *iban = (char *) palloc(strlen(str) + 1);
+
+		memcpy(iban, str, strlen(str));
+		iban[strlen(str)] = '\0';
+
+		if (!account_validate_str(iban))
+			ereport(ERROR,
+			        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+			         errmsg("invalid syntax or iban account: \"%s\"",
+			                iban)));
+
+		PG_RETURN_POINTER(iban);
+	}
+
+	/* Convert type output */
+
+	PG_FUNCTION_INFO_V1(ibanout);
+
+	Datum
+	ibanout(PG_FUNCTION_ARGS) {
+		char       *iban = (char *) PG_GETARG_POINTER(0);
+		char	   *result;
+
+		result = psprintf("%s", iban);
+
+		PG_RETURN_CSTRING(result);
+	}
+
+	/* Manually verify a text */
+
 	PG_FUNCTION_INFO_V1(iban_validate);
 
 	Datum
 	iban_validate(PG_FUNCTION_ARGS) {
 		text     *iban = PG_GETARG_TEXT_P(0);
 
-		bool r = account_validate(iban);
+		bool result = account_validate_text(iban);
 
-		PG_RETURN_BOOL(r);
+		PG_RETURN_BOOL(result);
 	}
 }
