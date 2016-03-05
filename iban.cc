@@ -15,13 +15,19 @@ extern "C"
 #include "specification.h"
 #include "validate.h"
 
+#define PG_RETURN_IBAN_P(x) PG_RETURN_POINTER(x)
+
 extern "C"
 {
-#ifdef PG_MODULE_MAGIC
 	PG_MODULE_MAGIC;
-#endif
 
+	extern Datum ibanin(PG_FUNCTION_ARGS);
+	extern Datum ibanout(PG_FUNCTION_ARGS);
 	extern Datum iban_validate(PG_FUNCTION_ARGS);
+
+	typedef struct Iban {
+		char		account[34];
+	}	Iban;
 }
 
 void Validate::addSpecification(Specification* specPtr) {
@@ -449,19 +455,19 @@ extern "C"
 
 	Datum
 	ibanin(PG_FUNCTION_ARGS) {
-		char       *str = PG_GETARG_CSTRING(0);
-		char       *iban = (char *) palloc(strlen(str) + 1);
+		char	   *str = PG_GETARG_CSTRING(0);
+		Iban       *result;
 
-		memcpy(iban, str, strlen(str));
-		iban[strlen(str)] = '\0';
-
-		if (!account_validate_str(iban))
+		if (!account_validate_str(str))
 			ereport(ERROR,
 			        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-			         errmsg("invalid syntax or iban account: \"%s\"",
-			                iban)));
+			         errmsg("invalid iban format for value: \"%s\"",
+			                str)));
 
-		PG_RETURN_POINTER(iban);
+		result = (Iban *) palloc0(sizeof(Iban));
+		memcpy(result->account, str, strlen(str));
+
+		PG_RETURN_POINTER(result);
 	}
 
 	/* Convert type output */
@@ -470,11 +476,10 @@ extern "C"
 
 	Datum
 	ibanout(PG_FUNCTION_ARGS) {
-		char       *iban = (char *) PG_GETARG_POINTER(0);
+		Iban       *iban = (Iban *) PG_GETARG_POINTER(0);
 		char	   *result;
 
-		result = psprintf("%s", iban);
-
+		result = psprintf("%s", iban->account);
 		PG_RETURN_CSTRING(result);
 	}
 
