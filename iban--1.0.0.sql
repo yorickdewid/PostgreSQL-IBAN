@@ -1,6 +1,6 @@
 --- IBAN datatype and verificator                            -*- sql -*-
 ---
---- Copyright © 2016 Yorick de Wid <yorick17@outlook.com>
+--- Copyright © 2016-2020 Yorick de Wid <yorick17 at outlook dot com>
 ---
 --- This program is free software: you can redistribute it and/or modify
 --- it under the terms of the GNU General Public License as published by

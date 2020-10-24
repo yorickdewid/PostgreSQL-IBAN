@@ -19,11 +19,11 @@
 
 extern "C"
 {
-#include <postgres.h>
-#include <string.h>
-#include <fmgr.h>
-#include <utils/builtins.h>
-#include <libpq/pqformat.h>
+
+#include "postgres.h"
+#include "utils/builtins.h"
+#include "libpq/pqformat.h"
+
 }
 
 #include <iostream>
@@ -35,17 +35,11 @@ extern "C"
 #include "specification.h"
 #include "validate.h"
 
-#define PG_RETURN_IBAN_P(x) PG_RETURN_POINTER(x)
+// #define PG_RETURN_IBAN_P(x) PG_RETURN_POINTER(x)
 
 extern "C"
 {
 	PG_MODULE_MAGIC;
-
-	extern Datum ibanin(PG_FUNCTION_ARGS);
-	extern Datum ibanout(PG_FUNCTION_ARGS);
-	extern Datum ibanrecv(PG_FUNCTION_ARGS);
-	extern Datum ibansend(PG_FUNCTION_ARGS);
-	extern Datum iban_validate(PG_FUNCTION_ARGS);
 
 	typedef char Iban;
 }

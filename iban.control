@@ -1,5 +1,5 @@
 # iban extension
-comment = 'IBAN verification'
+comment = 'IBAN functionality for PostgreSQL'
 default_version = '1.0.0'
 module_pathname = '$libdir/iban'
 relocatable = true
