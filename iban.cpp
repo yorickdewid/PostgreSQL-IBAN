@@ -1,6 +1,7 @@
 /*
  * IBAN: PostgreSQL functions and datatype
  * Copyright © 2016 Yorick de Wid <yorick17@outlook.com>
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -21,27 +22,23 @@ extern "C"
 {
 
 #include "postgres.h"
+
 #include "utils/builtins.h"
 #include "libpq/pqformat.h"
 
 }
 
-#include <iostream>
-#include <sstream>
 #include <string>
-#include <cctype>
 #include <regex>
 
 #include "specification.h"
 #include "validate.h"
 
-// #define PG_RETURN_IBAN_P(x) PG_RETURN_POINTER(x)
-
 extern "C"
 {
 	PG_MODULE_MAGIC;
 
-	typedef char Iban;
+	using Iban = char;
 }
 
 void Validate::addSpecification(Specification* specPtr) {
@@ -57,16 +54,20 @@ void Validate::addSpecification(Specification* specPtr) {
 bool iso7064Mod97_10(std::string iBan) {
 	std::rotate(iBan.begin(), iBan.begin() + 4, iBan.end());
 	std::string numberstring;//will contain the letter substitutions
+
 	for (const auto& c : iBan) {
-		if (std::isdigit(c))
+		if (std::isdigit(c)) {
 			numberstring += c;
-		if (std::isupper(c))
+		}
+		if (std::isupper(c)) {
 			numberstring += std::to_string(static_cast<int>(c) - 55);
+		}
 	}
+
 	//implements a stepwise check for mod 97 in chunks of 9 at the first time
 	// , then in chunks of seven prepended by the last mod 97 operation converted
 	//to a string
-	int segstart = 0;
+	size_t segstart = 0;
 	int step = 9;
 	std::string prepended;
 	long number = 0;
@@ -98,8 +99,7 @@ std::regex parseStructure(std::string structure) {
 	std::string::const_iterator text_iter = structure.cbegin();
 	std::ostringstream result;
 
-	while (std::regex_search(text_iter, structure.cend(), match,
-	                         std::regex("(.{3})"))) {
+	while (std::regex_search(text_iter, structure.cend(), match, std::regex("(.{3})"))) {
 		std::string format;
 		char pattern = match[0].str()[0];
 		int repeats = std::stoi((match[0].str().substr(1)));
@@ -135,8 +135,9 @@ bool Validate::isValid(std::string arg) {
 	spec->countryCode = spec->example.substr(0, 2);
 	spec->length = spec->example.length();
 	Specification* specFound = this->specifications[spec->countryCode];
-	if (!specFound)
+	if (!specFound) {
 		return false;
+	}
 
 	/* Test accountnumber */
 	std::string shortened = spec->example.substr(4, spec->example.length());
