@@ -30,13 +30,6 @@ extern "C"
 
 #include <regex>
 
-extern "C"
-{
-	PG_MODULE_MAGIC;
-
-	using Iban = char;
-}
-
 class Specification {
   public:
 	Specification(std::string structure, size_t length)
@@ -120,7 +113,7 @@ static bool iso7064Mod97_10(std::string iban) {
 }
 
 /**
-* parse the bban structure used to configure each iban specification and returns a matching regular expression.
+* Parse the IBAN structure used to configure each iban specification and returns a matching regular expression.
 * a structure is composed of blocks of 3 characters (one letter and 2 digits). each block represents
 * a logical group in the typical representation of the bban. for each group, the letter indicates which characters
 * are allowed in this group and the following 2-digits number tells the length of the group.
@@ -362,7 +355,7 @@ Validate::Validate() {
 
 /**
 * Separate CXX and C logic to minimize unexpected or malformed symbols due to
-* language conversions. Also catch all exceptions the std++ can throw since
+* language conversions. Also demark all exceptions the std++ can throw since
 * PostgreSQL is not able to handle them.
 *
 * @param {string} iban
@@ -403,78 +396,84 @@ bool account_validate_str(char *iban) {
 
 extern "C"
 {
-	/**************************************************************************
-	 * Input/Output functions
-	 **************************************************************************/
 
-	PG_FUNCTION_INFO_V1(ibanin);
+PG_MODULE_MAGIC;
 
-	Datum
-	ibanin(PG_FUNCTION_ARGS) {
-		char	   *inputText = PG_GETARG_CSTRING(0);
+typedef char Iban;
 
-		if (!account_validate_str(inputText))
-			ereport(ERROR,
-			        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-			         errmsg("invalid iban format for value: \"%s\"",
-			                inputText)));
+/**************************************************************************
+ * Input/Output functions
+ **************************************************************************/
 
-		PG_RETURN_TEXT_P(cstring_to_text(inputText));
-	}
+PG_FUNCTION_INFO_V1(ibanin);
 
-	/* Convert type output */
+Datum
+ibanin(PG_FUNCTION_ARGS) {
+	char	   *inputText = PG_GETARG_CSTRING(0);
 
-	PG_FUNCTION_INFO_V1(ibanout);
+	if (!account_validate_str(inputText))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					errmsg("invalid iban format for value: \"%s\"",
+						inputText)));
 
-	Datum
-	ibanout(PG_FUNCTION_ARGS) {
-		Iban       *iban = (Iban *) PG_GETARG_DATUM(0);
-
-		PG_RETURN_CSTRING(TextDatumGetCString(iban));
-	}
-
-	/**************************************************************************
-	 * Binary Input/Output functions
-	 **************************************************************************/
-
-	PG_FUNCTION_INFO_V1(ibanrecv);
-
-	Datum
-	ibanrecv(PG_FUNCTION_ARGS) {
-		StringInfo     buf = (StringInfo) PG_GETARG_POINTER(0);
-		text           *result;
-		Iban           *str;
-		int            nbytes;
-
-		str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
-
-		result = cstring_to_text_with_len(str, nbytes);
-		pfree(str);
-		PG_RETURN_TEXT_P(result);
-	}
-
-	PG_FUNCTION_INFO_V1(ibansend);
-
-	Datum
-	ibansend(PG_FUNCTION_ARGS) {
-		text       *t = PG_GETARG_TEXT_PP(0);
-		StringInfoData buf;
-
-		pq_begintypsend(&buf);
-		pq_sendtext(&buf, VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
-		PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
-	}
-
-	/* Manually verify a text */
-
-	PG_FUNCTION_INFO_V1(iban_validate);
-
-	Datum
-	iban_validate(PG_FUNCTION_ARGS) {
-		text     *iban = PG_GETARG_TEXT_P(0);
-
-		bool result = account_validate_text(iban);
-
-		PG_RETURN_BOOL(result);
-	}
+	PG_RETURN_TEXT_P(cstring_to_text(inputText));
 }
+
+/* Convert type output */
+
+PG_FUNCTION_INFO_V1(ibanout);
+
+Datum
+ibanout(PG_FUNCTION_ARGS) {
+	Iban       *iban = (Iban *) PG_GETARG_DATUM(0);
+
+	PG_RETURN_CSTRING(TextDatumGetCString(iban));
+}
+
+/**************************************************************************
+ * Binary Input/Output functions
+ **************************************************************************/
+
+PG_FUNCTION_INFO_V1(ibanrecv);
+
+Datum
+ibanrecv(PG_FUNCTION_ARGS) {
+	StringInfo     buf = (StringInfo) PG_GETARG_POINTER(0);
+	text           *result;
+	Iban           *str;
+	int            nbytes;
+
+	str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
+
+	result = cstring_to_text_with_len(str, nbytes);
+	pfree(str);
+	PG_RETURN_TEXT_P(result);
+}
+
+PG_FUNCTION_INFO_V1(ibansend);
+
+Datum
+ibansend(PG_FUNCTION_ARGS) {
+	text       *t = PG_GETARG_TEXT_PP(0);
+	StringInfoData buf;
+
+	pq_begintypsend(&buf);
+	pq_sendtext(&buf, VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
+	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+}
+
+/* Manually verify a text */
+
+PG_FUNCTION_INFO_V1(iban_validate);
+
+Datum
+iban_validate(PG_FUNCTION_ARGS) {
+	text     *iban = PG_GETARG_TEXT_P(0);
+
+	bool result = account_validate_text(iban);
+
+	PG_RETURN_BOOL(result);
+}
+
+} // extern "C"
