@@ -11,7 +11,9 @@ CREATE TABLE test_iban (
   account iban
 )
 
+--
 -- Insert data
+--
 
 -- Dutch IBAN format
 INSERT INTO test_iban (name, account) VALUES ('John', 'NL91ABNA0417164300');
@@ -21,7 +23,10 @@ INSERT INTO test_iban (name, account) VALUES ('Doe', 'DE89370400440532013000');
 -- Invalid data
 INSERT INTO test_iban (name, account) VALUES ('Dean', 'AZ22NABZ00000000137010001944');
 
+--
 -- Show output
+--
+
 SELECT * FROM test_iban;
 
 ```
@@ -42,7 +47,7 @@ SELECT 'KZ86125KZT5004100100'::iban::text;
 
 Make sure PostgreSQL development tools are installed (check `pg_config`)
 
-```
+```bash
 git clone https://github.com/yorickdewid/PostgreSQL-IBAN
 cd PostgreSQL-IBAN
 make install
@@ -50,6 +55,6 @@ make install
 
 Login to the database and load the extension
 
-```
+```sql
 CREATE EXTENSION iban;
 ```
