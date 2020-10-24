@@ -79,11 +79,14 @@ static Validate validator;
 * @param string iban
 * @returns {bool}
 */
-static bool iso7064Mod97_10(std::string iBan) {
-	std::rotate(iBan.begin(), iBan.begin() + 4, iBan.end());
-	std::string numberstring;//will contain the letter substitutions
+static bool iso7064Mod97_10(std::string iban) {
+	std::rotate(iban.begin(), iban.begin() + 4, iban.end());
+	
+	/* Will contain the letter substitutions */
+	std::string numberstring;
+	numberstring.reserve(iban.size());
 
-	for (const auto& c : iBan) {
+	for (const auto& c : iban) {
 		if (std::isdigit(c)) {
 			numberstring += c;
 		}
@@ -92,14 +95,16 @@ static bool iso7064Mod97_10(std::string iBan) {
 		}
 	}
 
-	//implements a stepwise check for mod 97 in chunks of 9 at the first time
-	// , then in chunks of seven prepended by the last mod 97 operation converted
-	//to a string
+	/*
+	 * Implements a stepwise check for mod 97 in chunks of 9 at the first time
+	 * then in chunks of seven prepended by the last mod 97 operation converted
+	 * to a string
+	 */
 	size_t segstart = 0;
 	int step = 9;
 	std::string prepended;
 	long number = 0;
-	while (segstart  < numberstring.length() - step) {
+	while (segstart < numberstring.length() - step) {
 		number = std::stol(prepended + numberstring.substr(segstart, step));
 		int remainder = number % 97;
 		prepended = std::to_string(remainder);
@@ -109,8 +114,9 @@ static bool iso7064Mod97_10(std::string iBan) {
 		segstart = segstart + step;
 		step = 7;
 	}
+
 	number = std::stol(prepended + numberstring.substr(segstart));
-	return (number % 97 == 1);
+	return number % 97 == 1;
 }
 
 /**
@@ -166,7 +172,7 @@ bool Validate::isValid(std::string account) {
 	const std::string& countryCode = account.substr(0, 2);
 	const std::string& shortened = account.substr(4);
 
-	const std::unique_ptr<Specification>& specFound = this->specifications[countryCode];
+	const std::unique_ptr<Specification>& specFound = specifications[countryCode];
 	if (!specFound) {
 		return false;
 	}
