@@ -1,22 +1,28 @@
-# PostgreSQL-IBAN
+![C/C++ CI](https://github.com/yorickdewid/PostgreSQL-IBAN/workflows/C/C++%20CI/badge.svg)
+
+# PostgreSQL IBAN
 PostgreSQL IBAN extension that can verify International Bank Account Numbers.
 This ensures that only valid bank account numbers are stored. 
 
 ### Example
 ```sql
 CREATE TABLE test_iban (
-  id serial NOT NULL,
-  name character varying(32),
-  account iban,
-  CONSTRAINT test_iban_pkey PRIMARY KEY (id)
+  name text,
+  account iban
 )
 
 -- Insert data
-INSERT INTO test_iban (name, account) VALUES ('John', 'NL91ABNA0417164300'); -- Dutch IBAN format
-INSERT INTO test_iban (name, account) VALUES ('Doe', 'DE89370400440532013000'); -- German IBAN format
 
--- Invalid bank account
+-- Dutch IBAN format
+INSERT INTO test_iban (name, account) VALUES ('John', 'NL91ABNA0417164300');
+-- German IBAN format
+INSERT INTO test_iban (name, account) VALUES ('Doe', 'DE89370400440532013000');
+
+-- Invalid data
 INSERT INTO test_iban (name, account) VALUES ('Dean', 'AZ22NABZ00000000137010001944');
+
+-- Show output
+SELECT * FROM test_iban;
 
 ```
 
