@@ -15,11 +15,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install PostgreSQL development tools
       run: sudo apt install postgresql-server-dev-13
-#     - name: configure
-#       run: ./configure
-    - name: make
+    - name: Make
       run: make
-#     - name: make check
-#       run: make check
-#     - name: make distcheck
-#       run: make distcheck
+    - name: Install
+      run: sudo make install
+
