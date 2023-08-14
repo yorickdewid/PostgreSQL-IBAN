@@ -29,6 +29,8 @@ extern "C"
 }
 
 #include <regex>
+#include <map>
+#include <sstream>
 
 class Specification {
   public:
