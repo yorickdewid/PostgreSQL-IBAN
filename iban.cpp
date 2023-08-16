@@ -157,7 +157,7 @@ bool Validate::isValid(std::string account) {
 	std::transform(account.begin(), account.end(), account.begin(), toupper);
 
 	/* Reject anything too small */
-	if (account.length() < 3) {
+	if (account.length() < 4) {
 		return false;
 	}
 
