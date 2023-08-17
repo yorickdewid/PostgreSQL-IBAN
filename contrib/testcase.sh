@@ -17,4 +17,5 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+psql -c "SELECT iban_validate('KW81CBKU0000000000001234560101');"
 psql -c "SELECT 'KZ86125KZT5004100100'::iban;"
