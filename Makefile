@@ -1,7 +1,7 @@
 MODULES = iban
 
 EXTENSION = iban
-DATA = iban--1.0.0.sql
+DATA = iban--1.1.sql
 PGFILEDESC = "iban - IBAN datatype and functions"
 
 PG_CXXFLAGS = -std=c++14 -fPIC

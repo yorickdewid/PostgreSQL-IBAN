@@ -155,13 +155,13 @@ static std::regex parseStructure(std::string structure) {
 }
 
 bool Validate::isValid(std::string account) {
-	/* Convert uppercase */
-	std::transform(account.begin(), account.end(), account.begin(), toupper);
-
 	/* Reject anything too small */
-	if (account.length() < 3) {
+	if (account.length() < 4) {
 		return false;
 	}
+
+	/* Convert uppercase */
+	std::transform(account.begin(), account.end(), account.begin(), toupper);
 
 	/* Match on country */
 	const std::string& countryCode = account.substr(0, 2);
