@@ -9,7 +9,7 @@ This ensures that only valid bank account numbers are stored.
 CREATE TABLE test_iban (
   name text,
   account iban
-)
+);
 
 --
 -- Insert data
