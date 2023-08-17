@@ -27,4 +27,4 @@ jobs:
       run: sudo -u postgres /usr/lib/postgresql/14/bin/postgres --config-file=/etc/postgresql/14/main/postgresql.conf &
 
     - name: Check PostgreSQL connection
-      run: sudo -u postgres psql -c "SELECT NOW();"
+      run: sudo -u postgres psql -c "select * from pg_available_extensions where name = 'iban'"
