@@ -19,5 +19,6 @@ jobs:
 
     - name: Make
       run: make
-    # - name: Install
-    #   run: sudo make install
+
+    - name: Install
+      run: sudo make install

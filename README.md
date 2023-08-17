@@ -45,12 +45,17 @@ SELECT 'KZ86125KZT5004100100'::iban::text;
 
 ## Build
 
-Make sure PostgreSQL development tools are installed (check `pg_config`)
+Make sure PostgreSQL development tools are installed (check `pg_config`).
+
+On Debian based systems:
+```sh
+sudo apt install postgresql-server-dev-all
+```
 
 ```bash
 git clone https://github.com/yorickdewid/PostgreSQL-IBAN
 cd PostgreSQL-IBAN
-make install
+sudo make install
 ```
 
 Login to the database and load the extension
