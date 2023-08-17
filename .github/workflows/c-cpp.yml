@@ -25,3 +25,6 @@ jobs:
 
     - name: Setup PostgreSQL
       run: sudo -u postgres /usr/lib/postgresql/14/bin/postgres --config-file=/etc/postgresql/14/main/postgresql.conf &
+
+    - name: Check PostgreSQL connection
+      run: sudo -u postgres psql -c "SELECT NOW();"
