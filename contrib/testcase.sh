@@ -19,3 +19,10 @@ fi
 
 psql -c "SELECT iban_validate('KW81CBKU0000000000001234560101');"
 psql -c "SELECT 'KZ86125KZT5004100100'::iban;"
+
+# Morocco (#5)
+psql -c "SELECT 'MA64011519000001205000534921'::iban;"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Moroccan IBAN rejected"
+    exit 1
+fi
