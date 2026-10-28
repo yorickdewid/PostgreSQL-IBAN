@@ -6,6 +6,11 @@ This ensures that only valid bank account numbers are stored.
 
 Supported PostgreSQL versions: 14, 15, 16, 17 and 18.
 
+### Install
+
+From source: `make && sudo make install`, then `CREATE EXTENSION iban;` (see Building below).
+From PGXN: `pgxn install iban` (requires the PostgreSQL development files and a C++17 compiler).
+
 ### Example
 ```sql
 CREATE TABLE test_iban (

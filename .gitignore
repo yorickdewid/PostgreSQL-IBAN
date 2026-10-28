@@ -4,3 +4,4 @@ iban.so
 results/
 regression.diffs
 regression.out
+*.zip

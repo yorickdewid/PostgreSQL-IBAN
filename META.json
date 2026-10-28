@@ -1,0 +1,41 @@
+{
+   "name": "iban",
+   "abstract": "IBAN data type that validates International Bank Account Numbers",
+   "description": "Adds an iban data type to PostgreSQL. Values are validated on input (ISO 13616: country, length, BBAN structure, mod 97 check digits), stored in canonical form, and usable in indexes, ORDER BY, DISTINCT and GROUP BY. Covers 104 countries.",
+   "version": "1.2.0",
+   "maintainer": "Yorick de Wid <yorick17@outlook.com>",
+   "license": "gpl_3",
+   "release_status": "stable",
+   "provides": {
+      "iban": {
+         "abstract": "IBAN data type with validation",
+         "file": "iban--1.2.sql",
+         "docfile": "README.md",
+         "version": "1.2.0"
+      }
+   },
+   "prereqs": {
+      "runtime": {
+         "requires": {
+            "PostgreSQL": "14.0.0"
+         }
+      }
+   },
+   "resources": {
+      "homepage": "https://github.com/yorickdewid/PostgreSQL-IBAN",
+      "bugtracker": {
+         "web": "https://github.com/yorickdewid/PostgreSQL-IBAN/issues"
+      },
+      "repository": {
+         "url": "https://github.com/yorickdewid/PostgreSQL-IBAN.git",
+         "web": "https://github.com/yorickdewid/PostgreSQL-IBAN",
+         "type": "git"
+      }
+   },
+   "generated_by": "Yorick de Wid",
+   "meta-spec": {
+      "version": "1.0.0",
+      "url": "https://pgxn.org/meta/spec.txt"
+   },
+   "tags": ["iban", "bank", "banking", "sepa", "validation", "datatype", "finance"]
+}
