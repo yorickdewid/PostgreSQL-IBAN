@@ -32,6 +32,7 @@ extern "C"
 #include "utils/builtins.h"
 }
 
+#include <climits>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -45,6 +46,16 @@ namespace
 
 	/* ISO 13616: an IBAN is at most 34 characters long. */
 	constexpr size_t IBAN_MAX_LENGTH = 34;
+
+	/*
+	 * Longest input that is even looked at. The print format has a space every
+	 * four characters (42 characters for 34 significant ones); anything longer
+	 * cannot be an IBAN and is rejected without scanning it.
+	 */
+	constexpr size_t IBAN_MAX_INPUT = 64;
+
+	/* Longest part of an invalid value that is repeated in an error message. */
+	constexpr int IBAN_ERROR_ECHO = 40;
 
 	struct CountrySpec
 	{
@@ -165,6 +176,31 @@ namespace
 	inline char toUpper(char c) noexcept
 	{
 		return (c >= 'a' && c <= 'z') ? static_cast<char>(c - 'a' + 'A') : c;
+	}
+
+	/**
+	 * Canonical form: ASCII spaces removed (the print format has them every four
+	 * characters), ASCII letters upper-cased. The result is NUL-terminated.
+	 *
+	 * @param out must hold IBAN_MAX_LENGTH + 1 bytes
+	 * @returns the canonical length, or -1 when the input is too long to be an IBAN
+	 */
+	int normalize(const char *data, size_t length, char *out) noexcept
+	{
+		if (length > IBAN_MAX_INPUT)
+			return -1;
+
+		size_t n = 0;
+		for (size_t i = 0; i < length; i++)
+		{
+			if (data[i] == ' ')
+				continue;
+			if (n == IBAN_MAX_LENGTH)
+				return -1;
+			out[n++] = toUpper(data[i]);
+		}
+		out[n] = '\0';
+		return static_cast<int>(n);
 	}
 
 	/**
@@ -356,6 +392,41 @@ namespace
 		return false; /* keep compiler quiet */
 	}
 
+	/**
+	 * Normalize and validate in one go.
+	 *
+	 * @param out receives the canonical value, must hold IBAN_MAX_LENGTH + 1 bytes
+	 * @returns {bool} true when the input is a valid IBAN
+	 */
+	bool account_canonical(const char *input, size_t length, char *out, size_t *outLength)
+	{
+		int n = normalize(input, length, out);
+		if (n < 0)
+			return false;
+		*outLength = static_cast<size_t>(n);
+		return account_validate(out, *outLength);
+	}
+
+	/**
+	 * Report an invalid value. Only the start of the value is repeated, so a
+	 * huge input cannot produce a huge error message; the clip never splits a
+	 * multibyte character.
+	 */
+	void report_invalid(int sqlstate, const char *value, size_t length)
+	{
+		int clip = pg_mbcliplen(value, static_cast<int>(length < INT_MAX ? length : INT_MAX), IBAN_ERROR_ECHO);
+
+		if (static_cast<size_t>(clip) < length)
+			ereport(ERROR,
+					(errcode(sqlstate),
+					 errmsg("invalid iban format for value: \"%.*s...\" (%zu bytes)",
+							clip, value, length)));
+
+		ereport(ERROR,
+				(errcode(sqlstate),
+				 errmsg("invalid iban format for value: \"%s\"", value)));
+	}
+
 	/* Byte-wise comparison, IBANs are plain ASCII and not collatable. */
 	int iban_cmp_internal(text *a, text *b)
 	{
@@ -389,14 +460,14 @@ extern "C"
 	ibanin(PG_FUNCTION_ARGS)
 	{
 		char *inputText = PG_GETARG_CSTRING(0);
+		size_t inputLength = strlen(inputText);
+		char canonical[IBAN_MAX_LENGTH + 1];
+		size_t canonicalLength;
 
-		if (!account_validate(inputText, strlen(inputText)))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-					 errmsg("invalid iban format for value: \"%s\"",
-							inputText)));
+		if (!account_canonical(inputText, inputLength, canonical, &canonicalLength))
+			report_invalid(ERRCODE_INVALID_TEXT_REPRESENTATION, inputText, inputLength);
 
-		PG_RETURN_TEXT_P(cstring_to_text(inputText));
+		PG_RETURN_TEXT_P(cstring_to_text_with_len(canonical, canonicalLength));
 	}
 
 	/* Convert type output */
@@ -422,17 +493,16 @@ extern "C"
 		text *result;
 		char *str;
 		int nbytes;
+		char canonical[IBAN_MAX_LENGTH + 1];
+		size_t canonicalLength;
 
 		str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
 
-		/* Binary input must not bypass the validation done by ibanin */
-		if (!account_validate(str, nbytes))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
-					 errmsg("invalid iban format for value: \"%s\"",
-							str)));
+		/* Binary input must not bypass the validation (and normalisation) done by ibanin */
+		if (!account_canonical(str, nbytes, canonical, &canonicalLength))
+			report_invalid(ERRCODE_INVALID_BINARY_REPRESENTATION, str, nbytes);
 
-		result = cstring_to_text_with_len(str, nbytes);
+		result = cstring_to_text_with_len(canonical, canonicalLength);
 		pfree(str);
 		PG_RETURN_TEXT_P(result);
 	}
@@ -459,7 +529,10 @@ extern "C"
 	{
 		text *iban = PG_GETARG_TEXT_PP(0);
 
-		PG_RETURN_BOOL(account_validate(VARDATA_ANY(iban), VARSIZE_ANY_EXHDR(iban)));
+		char canonical[IBAN_MAX_LENGTH + 1];
+		size_t canonicalLength;
+
+		PG_RETURN_BOOL(account_canonical(VARDATA_ANY(iban), VARSIZE_ANY_EXHDR(iban), canonical, &canonicalLength));
 	}
 
 	/**************************************************************************
