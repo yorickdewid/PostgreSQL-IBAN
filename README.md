@@ -59,6 +59,12 @@ SELECT 'KZ86125KZT5004100100'::iban::text;
 * Binary input (`COPY ... (FORMAT binary)`) is validated and normalised the same way as text input.
 * An error message repeats at most the first 40 bytes of the rejected value.
 
+### Supported countries
+
+104 countries: every country of the SWIFT IBAN registry (ISO 13616, release 99, December 2024) plus 15
+that are in use but not in that registry: AO, BF, BJ, CG, CI, CM, CV, DZ, GA, IR, MA, MG, ML, MZ and SN.
+The latter are kept on purpose and marked in `iban.cpp`.
+
 ### Functions and operators
 
 | Name | Description |
