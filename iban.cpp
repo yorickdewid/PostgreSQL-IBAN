@@ -23,6 +23,10 @@ extern "C"
 
 #include "postgres.h"
 
+#if PG_VERSION_NUM >= 160000
+#include "varatt.h"
+#endif
+
 #include "utils/builtins.h"
 #include "libpq/pqformat.h"
 
@@ -428,9 +432,7 @@ PG_FUNCTION_INFO_V1(ibanout);
 
 Datum
 ibanout(PG_FUNCTION_ARGS) {
-	Iban       *iban = (Iban *) PG_GETARG_DATUM(0);
-
-	PG_RETURN_CSTRING(TextDatumGetCString(iban));
+	PG_RETURN_CSTRING(TextDatumGetCString(PG_GETARG_DATUM(0)));
 }
 
 /**************************************************************************
