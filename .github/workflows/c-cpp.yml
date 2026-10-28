@@ -8,24 +8,35 @@ on:
 
 jobs:
   build:
-    name: Build
-    runs-on: ubuntu-22.04
+    name: PostgreSQL ${{ matrix.pg }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [14, 15, 16, 17, 18]
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Install PostgreSQL development tools
-      run: sudo apt install postgresql postgresql-server-dev-14
+    - name: Add the PostgreSQL (PGDG) apt repository
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-common
+        sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
 
-    - name: Make
-      run: make
+    - name: Install PostgreSQL ${{ matrix.pg }} and development files
+      run: sudo apt-get install -y build-essential postgresql-${{ matrix.pg }} postgresql-server-dev-${{ matrix.pg }}
+
+    - name: Build
+      run: make PG_CONFIG=/usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config
 
     - name: Install
-      run: sudo make install
+      run: sudo make install PG_CONFIG=/usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config
 
-    - name: Setup PostgreSQL
-      run: sudo -u postgres /usr/lib/postgresql/14/bin/postgres --config-file=/etc/postgresql/14/main/postgresql.conf &
+    - name: Regression tests (temporary cluster)
+      run: pg_virtualenv -v ${{ matrix.pg }} make installcheck PG_CONFIG=/usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config
 
-    - name: Test extension
-      run: sudo -u postgres bash contrib/testcase.sh
+    - name: Show regression diffs on failure
+      if: failure()
+      run: cat regression.diffs || true
