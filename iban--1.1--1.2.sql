@@ -1,6 +1,6 @@
 --- IBAN datatype and verificator, upgrade from 1.1 to 1.2      -*- sql -*-
 ---
---- Copyright © 2016-2020 Yorick de Wid <yorick17 at outlook dot com>
+--- Copyright © 2016-2026 Yorick de Wid <yorick17 at outlook dot com>
 ---
 --- This program is free software: you can redistribute it and/or modify
 --- it under the terms of the GNU General Public License as published by
