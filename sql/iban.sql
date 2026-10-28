@@ -112,6 +112,16 @@ SELECT n, length(s), iban_validate(s) FROM (VALUES
 SELECT count(*) AS accepted FROM generate_series(0, 255) b
   WHERE b <> 0 AND iban_validate('NL91ABNA041716430' || chr(CASE WHEN b > 127 AND getdatabaseencoding() <> 'UTF8' THEN 63 ELSE b END));
 
+-- out-of-line and compressed arguments: only the first bytes are fetched, the result is still right
+CREATE TABLE toasted (id int, t text);
+ALTER TABLE toasted ALTER COLUMN t SET STORAGE EXTERNAL;
+INSERT INTO toasted VALUES (1, repeat('NL91ABNA0417164300', 1000)), (2, 'NL91ABNA0417164300'), (3, 'nl91 abna 0417 1643 00'), (4, repeat(' ', 9000) || 'NL91ABNA0417164300');
+SELECT id, length(t), iban_validate(t) FROM toasted ORDER BY id;
+ALTER TABLE toasted ALTER COLUMN t SET STORAGE MAIN;
+INSERT INTO toasted VALUES (5, repeat('NL91ABNA0417164300', 1000));
+SELECT id, iban_validate(t) FROM toasted WHERE id IN (2, 5) ORDER BY id;
+DROP TABLE toasted;
+
 --
 -- Error messages repeat only the start of the value
 --

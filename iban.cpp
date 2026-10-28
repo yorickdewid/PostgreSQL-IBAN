@@ -412,7 +412,7 @@ namespace
 	 * huge input cannot produce a huge error message; the clip never splits a
 	 * multibyte character.
 	 */
-	void report_invalid(int sqlstate, const char *value, size_t length)
+	[[noreturn]] void report_invalid(int sqlstate, const char *value, size_t length)
 	{
 		int clip = pg_mbcliplen(value, static_cast<int>(length < INT_MAX ? length : INT_MAX), IBAN_ERROR_ECHO);
 
@@ -424,7 +424,7 @@ namespace
 
 		ereport(ERROR,
 				(errcode(sqlstate),
-				 errmsg("invalid iban format for value: \"%s\"", value)));
+				 errmsg("invalid iban format for value: \"%.*s\"", clip, value)));
 	}
 
 	/* Byte-wise comparison, IBANs are plain ASCII and not collatable. */
@@ -462,7 +462,7 @@ extern "C"
 		char *inputText = PG_GETARG_CSTRING(0);
 		size_t inputLength = strlen(inputText);
 		char canonical[IBAN_MAX_LENGTH + 1];
-		size_t canonicalLength;
+		size_t canonicalLength = 0;
 
 		if (!account_canonical(inputText, inputLength, canonical, &canonicalLength))
 			report_invalid(ERRCODE_INVALID_TEXT_REPRESENTATION, inputText, inputLength);
@@ -494,7 +494,7 @@ extern "C"
 		char *str;
 		int nbytes;
 		char canonical[IBAN_MAX_LENGTH + 1];
-		size_t canonicalLength;
+		size_t canonicalLength = 0;
 
 		str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
 
@@ -527,10 +527,11 @@ extern "C"
 	Datum
 	iban_validate(PG_FUNCTION_ARGS)
 	{
-		text *iban = PG_GETARG_TEXT_PP(0);
+		/* Never detoast more than the longest input that is looked at, plus one byte so that longer values are still rejected */
+		text *iban = PG_GETARG_TEXT_P_SLICE(0, 0, IBAN_MAX_INPUT + 1);
 
 		char canonical[IBAN_MAX_LENGTH + 1];
-		size_t canonicalLength;
+		size_t canonicalLength = 0;
 
 		PG_RETURN_BOOL(account_canonical(VARDATA_ANY(iban), VARSIZE_ANY_EXHDR(iban), canonical, &canonicalLength));
 	}
