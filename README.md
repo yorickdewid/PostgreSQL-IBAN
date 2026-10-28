@@ -49,11 +49,15 @@ SELECT 'KZ86125KZT5004100100'::iban::text;
 
 ### Input rules
 
-* The value must be in electronic format: no spaces or other separators.
-* Lowercase letters are accepted and stored as entered, so `nl91abna0417164300`
-  and `NL91ABNA0417164300` are both valid but are not equal to each other.
+* Values are stored in canonical form: spaces are removed and letters are upper-cased. So
+  `NL91 ABNA 0417 1643 00` (print format), `nl91abna0417164300` and `NL91ABNA0417164300` are
+  the same value, and all three are stored as `NL91ABNA0417164300`. Only the plain space is
+  dropped (not tabs, newlines or other whitespace); input longer than 64 bytes is rejected.
+* Rows stored by an older version may still contain lowercase values. Normalise them with
+  `UPDATE t SET account = account::text::iban;`
 * The check digits (positions 3 and 4) must be digits.
-* Binary input (`COPY ... (FORMAT binary)`) is validated the same way as text input.
+* Binary input (`COPY ... (FORMAT binary)`) is validated and normalised the same way as text input.
+* An error message repeats at most the first 40 bytes of the rejected value.
 
 ### Functions and operators
 

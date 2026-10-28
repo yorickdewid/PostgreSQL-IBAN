@@ -56,15 +56,27 @@ SELECT pg_temp.ref_mod97('NL0SABNA0417164300') AS mod97, iban_validate('NL0SABNA
 SELECT iban_validate('NL00ABNA0417164300'), iban_validate('NL01ABNA0417164300'), iban_validate('NL99ABNA0417164300');
 
 --
--- Case and whitespace handling (current behaviour, pinned)
+-- Normalisation: stored in canonical form (no spaces, upper case)
 --
--- lowercase is accepted and stored exactly as typed
+-- lowercase and mixed case are accepted and stored upper-cased
 SELECT iban_validate('nl91abna0417164300'), 'nl91abna0417164300'::iban, 'Nl91aBnA0417164300'::iban;
--- spaces anywhere are rejected (no normalisation of the print format)
+-- the print format (a space every four characters), extra and surrounding spaces are removed
 SELECT iban_validate('NL91 ABNA 0417 1643 00'), iban_validate(' NL91ABNA0417164300'), iban_validate('NL91ABNA0417164300 ');
-SELECT 'NL91 ABNA 0417 1643 00'::iban;
--- equality is exact, so differently cased values are different values
-SELECT 'nl91abna0417164300'::iban = 'NL91ABNA0417164300'::iban AS equal;
+SELECT 'NL91 ABNA 0417 1643 00'::iban, '  nl91   abna 0417164300  '::iban, 'MA64 0115 1900 0001 2050 0053 4921'::iban;
+SELECT length('NL91 ABNA 0417 1643 00'::iban) AS stored_length;
+-- so differently written values are the same value
+SELECT 'nl91abna0417164300'::iban = 'NL91ABNA0417164300'::iban AS equal_case,
+       'NL91 ABNA 0417 1643 00'::iban = 'NL91ABNA0417164300'::iban AS equal_spaces;
+-- only the ASCII space is dropped: tab, newline and no-break space stay invalid
+SELECT iban_validate('NL91' || chr(9) || 'ABNA0417164300') AS tab,
+       iban_validate('NL91ABNA0417164300' || chr(10)) AS newline,
+       iban_validate('NL91' || chr(160) || 'ABNA0417164300') AS nbsp;
+-- a bad value stays bad after normalising
+SELECT iban_validate('nl91 abna 0417 1643 01') AS bad_checksum, iban_validate('nl 91 abna 0417 1643') AS too_short;
+-- input longer than 64 bytes is not even scanned; 64 is still fine
+SELECT iban_validate(rpad('NL91ABNA0417164300', 64)) AS len64, iban_validate(rpad('NL91ABNA0417164300', 65)) AS len65;
+-- more than 34 significant characters never validate; padding spaces do not count
+SELECT iban_validate(rpad('NL91ABNA0417164300', 35, '0')) AS sig35, iban_validate('NL91 ABNA 0417 1643 00' || repeat(' ', 30)) AS padded;
 
 --
 -- NULL, empty and short input
@@ -99,6 +111,37 @@ SELECT n, length(s), iban_validate(s) FROM (VALUES
 ) v(n, s) ORDER BY n;
 SELECT count(*) AS accepted FROM generate_series(0, 255) b
   WHERE b <> 0 AND iban_validate('NL91ABNA041716430' || chr(CASE WHEN b > 127 AND getdatabaseencoding() <> 'UTF8' THEN 63 ELSE b END));
+
+--
+-- Error messages repeat only the start of the value
+--
+DO $$
+DECLARE
+  m text;
+BEGIN
+  BEGIN PERFORM 'NL91ABNA0417164301'::iban; EXCEPTION WHEN invalid_text_representation THEN GET STACKED DIAGNOSTICS m = MESSAGE_TEXT; END;
+  RAISE NOTICE 'short: %', m;
+  BEGIN PERFORM repeat('NL91ABNA0417164300', 100000)::iban; EXCEPTION WHEN invalid_text_representation THEN GET STACKED DIAGNOSTICS m = MESSAGE_TEXT; END;
+  RAISE NOTICE 'long: % (message length %)', m, length(m);
+  BEGIN PERFORM ('XX' || repeat('9', 38))::iban; EXCEPTION WHEN invalid_text_representation THEN GET STACKED DIAGNOSTICS m = MESSAGE_TEXT; END;
+  RAISE NOTICE 'exactly 40: % (message length %)', m, length(m);
+  BEGIN PERFORM ('XX' || repeat('9', 39))::iban; EXCEPTION WHEN invalid_text_representation THEN GET STACKED DIAGNOSTICS m = MESSAGE_TEXT; END;
+  RAISE NOTICE '41 bytes: %', m;
+END
+$$;
+-- the cut never splits a multibyte character (the message would be invalid in that case)
+DO $$
+DECLARE
+  m text;
+BEGIN
+  IF getdatabaseencoding() <> 'UTF8' THEN
+    RAISE NOTICE 'multibyte: skipped (not UTF8)';
+    RETURN;
+  END IF;
+  BEGIN PERFORM repeat(chr(233), 50)::iban; EXCEPTION WHEN invalid_text_representation THEN GET STACKED DIAGNOSTICS m = MESSAGE_TEXT; END;
+  RAISE NOTICE 'multibyte: % (valid utf8: %)', m, m IS NOT NULL;
+END
+$$;
 
 --
 -- Casts
@@ -143,6 +186,12 @@ INSERT INTO texts VALUES ('garbage', 'garbage');
 COPY texts TO '/tmp/iban_regress_bad.bin' (FORMAT binary);
 COPY ibans_copy FROM '/tmp/iban_regress_bad.bin' (FORMAT binary);
 SELECT count(*) AS copied FROM ibans_copy;
+-- binary input is normalised like text input
+TRUNCATE texts, ibans_copy;
+INSERT INTO texts VALUES ('print', 'nl91 abna 0417 1643 00');
+COPY texts TO '/tmp/iban_regress_norm.bin' (FORMAT binary);
+COPY ibans_copy FROM '/tmp/iban_regress_norm.bin' (FORMAT binary);
+SELECT name, account, length(account) FROM ibans_copy;
 
 --
 -- Equality, ordering, DISTINCT, GROUP BY and indexes
@@ -160,7 +209,7 @@ SELECT 'DE89370400440532013000'::iban < 'NL91ABNA0417164300'::iban AS lt,
        iban_cmp('BE68539007547034', 'BE68539007547034') AS cmp_eq,
        iban_cmp('BE68539007547034', 'CH9300762011623852957') AS cmp_lt,
        iban_cmp('CH9300762011623852957', 'BE68539007547034') AS cmp_gt;
--- byte order: uppercase sorts before lowercase, shorter prefix first
+-- byte order, shorter prefix first
 SELECT account FROM ibans ORDER BY account;
 SELECT account FROM ibans ORDER BY account DESC LIMIT 3;
 SELECT DISTINCT account FROM ibans WHERE name IN ('BE', 'NL', 'dup', 'lower') ORDER BY 1;
