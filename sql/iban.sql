@@ -56,6 +56,58 @@ SELECT pg_temp.ref_mod97('NL0SABNA0417164300') AS mod97, iban_validate('NL0SABNA
 SELECT iban_validate('NL00ABNA0417164300'), iban_validate('NL01ABNA0417164300'), iban_validate('NL99ABNA0417164300');
 
 --
+-- Registry update: countries added or corrected (SWIFT IBAN registry release 99)
+-- The IBANs are synthetic: the BBAN follows the registry format, the check digits are computed in SQL.
+--
+CREATE TABLE registry_update (cc text, len int, classes text, bban text);
+INSERT INTO registry_update VALUES
+  ('BI', 27, 'nnnnnnnnnnnnnnnnnnnnnnn', '14703692581470369258147'),
+  ('BY', 28, 'ccccnnnncccccccccccccccc', 'M1KT3692R2B743XZM1KTWQ69'),
+  ('CR', 22, 'nnnnnnnnnnnnnnnnnn', '147036925814703692'),
+  ('DJ', 27, 'nnnnnnnnnnnnnnnnnnnnnnn', '14703692581470369258147'),
+  ('DO', 28, 'ccccnnnnnnnnnnnnnnnnnnnn', 'M1KT36925814703692581470'),
+  ('EG', 29, 'nnnnnnnnnnnnnnnnnnnnnnnnn', '1470369258147036925814703'),
+  ('FK', 18, 'aannnnnnnnnnnn', 'CH703692581470'),
+  ('HN', 28, 'aaaannnnnnnnnnnnnnnnnnnn', 'CHNT36925814703692581470'),
+  ('IQ', 23, 'aaaannnnnnnnnnnnnnn', 'CHNT369258147036925'),
+  ('JO', 30, 'aaaannnncccccccccccccccccc', 'CHNT3692R2B743XZM1KTWQ69R2'),
+  ('LC', 32, 'aaaacccccccccccccccccccccccc', 'CHNTWQ69R2B743XZM1KTWQ69R2B7'),
+  ('LY', 25, 'nnnnnnnnnnnnnnnnnnnnn', '147036925814703692581'),
+  ('MD', 24, 'cccccccccccccccccccc', 'M1KTWQ69R2B743XZM1KT'),
+  ('MN', 20, 'nnnnnnnnnnnnnnnn', '1470369258147036'),
+  ('NI', 28, 'aaaannnnnnnnnnnnnnnnnnnn', 'CHNT36925814703692581470'),
+  ('OM', 23, 'nnncccccccccccccccc', '147TWQ69R2B743XZM1K'),
+  ('RU', 33, 'nnnnnnnnnnnnnnccccccccccccccc', '14703692581470XZM1KTWQ69R2B74'),
+  ('SC', 31, 'aaaannnnnnnnnnnnnnnnnnnnaaa', 'CHNT36925814703692581470CHN'),
+  ('SD', 18, 'nnnnnnnnnnnnnn', '14703692581470'),
+  ('SO', 23, 'nnnnnnnnnnnnnnnnnnn', '1470369258147036925'),
+  ('SV', 28, 'aaaannnnnnnnnnnnnnnnnnnn', 'CHNT36925814703692581470'),
+  ('UA', 29, 'nnnnnnccccccccccccccccccc', '14703669R2B743XZM1KTWQ69R'),
+  ('VA', 22, 'nnnnnnnnnnnnnnnnnn', '147036925814703692'),
+  ('YE', 30, 'aaaannnncccccccccccccccccc', 'CHNT3692R2B743XZM1KTWQ69R2');
+CREATE TABLE registry_ibans AS SELECT cc, len, classes, pg_temp.with_check(cc, bban) AS iban, bban FROM registry_update;
+-- every one validates, has the registry length and a correct mod 97
+SELECT cc, len, length(iban) = len AS length_ok, pg_temp.ref_mod97(iban) AS mod97, iban_validate(iban) AS valid FROM registry_ibans ORDER BY cc;
+-- one character shorter or longer is rejected
+SELECT count(*) FILTER (WHERE iban_validate(substr(iban, 1, len - 1))) AS shorter_valid,
+       count(*) FILTER (WHERE iban_validate(iban || '0')) AS longer_valid
+  FROM registry_ibans;
+-- a wrong check digit is rejected
+SELECT count(*) FILTER (WHERE iban_validate(substr(iban, 1, 2) || lpad(((substr(iban, 3, 2)::int % 97) + 1)::text, 2, '0') || substr(iban, 5))) AS bad_checksum_valid
+  FROM registry_ibans;
+-- a character of the wrong class in the first BBAN position is rejected (check digits recomputed): digit slot gets a letter, letter slot gets a digit
+SELECT cc, substr(classes, 1, 1) AS first_class,
+       iban_validate(pg_temp.with_check(cc, CASE substr(classes, 1, 1) WHEN 'n' THEN 'Q' ELSE '5' END || substr(bban, 2))) AS wrong_class_valid
+  FROM registry_ibans WHERE substr(classes, 1, 1) IN ('n', 'a') ORDER BY cc;
+-- corrected countries: the old (wrong) length is now rejected
+SELECT iban_validate(pg_temp.with_check('CR', repeat('1', 17))) AS cr_old_21,
+       iban_validate(pg_temp.with_check('EG', repeat('1', 23))) AS eg_old_27,
+       iban_validate(pg_temp.with_check('BI', repeat('1', 12))) AS bi_old_16;
+-- countries that are in use but not in the registry are kept
+SELECT iban_validate('MA64011519000001205000534921') AS ma_kept;
+DROP TABLE registry_ibans, registry_update;
+
+--
 -- Normalisation: stored in canonical form (no spaces, upper case)
 --
 -- lowercase and mixed case are accepted and stored upper-cased
