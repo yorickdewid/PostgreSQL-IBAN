@@ -1,10 +1,12 @@
 MODULES = iban
 
 EXTENSION = iban
-DATA = iban--1.1.sql
+DATA = iban--1.1.sql iban--1.2.sql iban--1.1--1.2.sql
 PGFILEDESC = "iban - IBAN datatype and functions"
 
-PG_CXXFLAGS = -std=c++14 -fPIC
+REGRESS = iban iban_upgrade
+
+PG_CXXFLAGS = -std=c++17 -fPIC
 
 PG_LDFLAGS = -lstdc++
 
