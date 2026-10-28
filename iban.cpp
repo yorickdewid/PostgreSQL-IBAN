@@ -264,6 +264,8 @@ Validate::Validate() {
 	addSpecification(
 	                     "LV", 21, "U04A13");
 	addSpecification(
+	                     "MA", 28, "F03F05F14F02");
+	addSpecification(
 	                     "MC", 27, "F05F05A11F02");
 	addSpecification(
 	                     "MD", 24, "U02A18");
