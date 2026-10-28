@@ -3,7 +3,7 @@
    "abstract": "IBAN data type that validates International Bank Account Numbers",
    "description": "Adds an iban data type to PostgreSQL. Values are validated on input (ISO 13616: country, length, BBAN structure, mod 97 check digits), stored in canonical form, and usable in indexes, ORDER BY, DISTINCT and GROUP BY. Covers 104 countries.",
    "version": "1.2.0",
-   "maintainer": "Yorick de Wid <yorick17@outlook.com>",
+   "maintainer": "Yorick de Wid <yorickdewid@users.noreply.github.com>",
    "license": "gpl_3",
    "release_status": "stable",
    "provides": {
